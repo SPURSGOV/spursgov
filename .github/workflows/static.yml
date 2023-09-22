@@ -1,15 +1,11 @@
-# Simple workflow for deploying static content to GitHub Pages
 name: Deploy static content to Pages
 
 on:
-  # Runs on pushes targeting the default branch
   push:
-    branches: ["main"]
-
-  # Allows you to run this workflow manually from the Actions tab
+    branches:
+      - main
   workflow_dispatch:
 
-# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
   contents: write
   pages: write
@@ -25,29 +21,82 @@ permissions:
   security-events: write
   statuses: write
 
-# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
-# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
 concurrency:
-  group: "pages"
+  group: pages-deployment
   cancel-in-progress: false
 
 jobs:
-  # Single deploy job since we're just deploying
   deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest, windows-latest, ios-latest, andriod-latest, linux-latest, *-latest
+    runs-on: ubuntu-latest
+    
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-      - name: Setup Pages
-        uses: actions/configure-pages@v3
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v1
+    
+      - name: Checkout code
+        uses: actions/checkout@v2
+        
+      - name: Set up Pages
+        uses: actions/configure-pages@v1
+
+      - name: Upload artifact 
+        uses: actions/upload-artifact@v2
         with:
-          # Upload entire repository
+          name: pages-artifact  
           path: '.'
+          retention-days: 5
+        
       - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v2
+        id: deploy
+        uses: JamesIves/github-pages-deploy-action@4.1.5 
+        with:
+          branch: gh-pages
+          folder: '.' 
+          clean: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run tests
+        run: npm test
+        
+      - name: Health check
+        run: curl -f ${{ steps.deploy.outputs.url }}
+        
+      - name: Retry on failure
+        if: failure() 
+        run: ${{ github.action_path }}
+        continue-on-error: true
+        max-attempts: 3
+
+      - name: Create failure issue
+        if: failure()
+        uses: actions/github-script@v3
+        with:
+          script: |
+            const issue_title = "Deployment of static content failed"
+            const issue_body = `Deployment was failed. Please check the deployment logs for diagnosis`
+            console.log(issue_title) 
+            console.log(issue_body)
+            github.rest.issues.create({
+             owner: context.repo.owner,
+             repo: context.repo.repo,
+             title: issue_title,
+             body: issue_body,
+           })
+
+      - name: Success notification
+        if: success()
+        uses: actions/github-script@v3
+        with:
+          script: |
+            const issue_title = "Deployment of static content successful"
+            const issue_body = `Deployment was successful. Pages can be accessed here ${process.env.PAGE_URL}`
+            console.log(issue_title)
+            console.log(issue_body)
+            github.rest.issues.create({
+             owner: context.repo.owner,
+             repo: context.repo.repo,
+             title: issue_title,
+             body: issue_body,
+           })
+
+    environment:
+      name: github-pages  
+      url: ${{ steps.deploy.outputs.url }}
