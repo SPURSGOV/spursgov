@@ -6,10 +6,31 @@ on:
     branches: [main]
   workflow_dispatch:
 
-permissions:
-  contents: read
+permissions: 
+  contents: write
   pages: write
   id-token: write
+  checks: write
+  deployments: write 
+  actions: write
+  packages: write
+  repository-projects: write
+  billing: write
+  discussions: write
+  graphql: write
+  pull-requests: write
+  repository-vulnerabilities: write
+  security-events: write
+  codespaces: write
+  marketplaces: write
+  sponsorships: write 
+  members: write
+  team-discussions: write
+  users: write
+  user-status: write
+  public-key-credentials: write
+  registry: write
+
   
 concurrency:
   group: "pages"
